@@ -6,13 +6,11 @@ import numpy as np
 import json
 import plotly.express as px
 
-
-# Import your modular functions
 from utils import parse_contents
 from weights_mitigations import create_charts, calculate_priority_vector
 from risk_index_status import determine_risk_index, process_risk_index, calculate_cumulative_risk_index
 
-app = Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
 
 app.layout = html.Div([
     dcc.Store(id='stored-data'),
@@ -31,6 +29,16 @@ app.layout = html.Div([
 ])
 
 @app.callback(
+    Output('stored-data', 'data'),
+    Input('upload-data', 'contents')
+)
+def handle_file_upload(contents):
+    if contents is None:
+        return {}
+    df = parse_contents(contents)
+    return df.to_dict('records')
+
+@app.callback(
     Output('tabs-content', 'children'),
     Input('tabs', 'value'),
     State('stored-data', 'data')
@@ -39,8 +47,10 @@ def render_tab_content(tab, data):
     if data is None:
         return "Please upload data to proceed."
     df = pd.DataFrame(data)
-    if 'Risk Drivers' not in df.columns or 'Sub Risk Drivers' not in df.columns:
-        return "Required columns are missing."
+    required_columns = ['Risk Drivers', 'Sub Risk Drivers', 'Threshold', 'Unit']
+    if not all(col in df.columns for col in required_columns):
+        return f"Required columns are missing. Make sure the following columns are included in the uploaded file: {', '.join(required_columns)}"
+    
     if tab == 'tab-weights':
         return create_weight_tab(df)
     elif tab == 'tab-risk':
@@ -66,11 +76,15 @@ def create_weight_tab(df):
         ]
         slider_groups.append(html.Div([
             html.H3(risk_driver),
-            html.Div(sliders),
-            dbc.Button('Render Graphs', id={'type': 'render-button', 'index': risk_driver}, children='Render', n_clicks=0)
+            html.Div(sliders)
         ]))
 
+    # Adding a single render button at the bottom of the page
+    slider_groups.append(dbc.Button('Render Graphs', id='render-all-graphs', className='mt-4', n_clicks=0))
+
     return html.Div(slider_groups)
+
+
 
 def create_risk_tab(df):
     content = []

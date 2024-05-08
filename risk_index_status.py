@@ -16,8 +16,9 @@ def process_risk_index(data):
 def calculate_cumulative_risk_index(df):
     df['risk_index'] = df.apply(lambda row: determine_risk_index(row['status'], row['threshold']), axis=1)
     weighted_risk_indices = {}
+    print(df.columns)
 
-    for risk_driver, group in df.groupby('risk_drivers'):
+    for risk_driver, group in df.groupby('Risk_Drivers'):
         priority_vector = group['pv'].to_numpy()
         risk_indices = group['risk_index'].to_numpy()
         weighted_risk_index = np.dot(priority_vector, risk_indices)

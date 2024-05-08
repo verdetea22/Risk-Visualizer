@@ -58,19 +58,20 @@ def render_tab_content(tab, data):
     elif tab == 'tab-summary':
         return create_summary_tab(df)
     return "This tab is not yet implemented."
+    
 
 def create_weight_tab(df):
     slider_groups = []
     for risk_driver, group in df.groupby('Risk Drivers'):
         sliders = [
             html.Div([
-                dbc.Label(row['Sub Risk Drivers']),
                 dcc.Slider(
                     id={'type': 'dynamic-slider', 'index': f"{risk_driver}-{row['Sub Risk Drivers']}"},
                     min=0, max=10, step=1, value=5,
                     marks={i: str(i) for i in range(11)},
                     tooltip={"placement": "bottom", "always_visible": True}
-                )
+                ),
+                html.Label(row['Sub Risk Drivers'])
             ], style={'margin': '20px'})
             for _, row in group.iterrows()
         ]
@@ -80,8 +81,7 @@ def create_weight_tab(df):
         ]))
 
     # Adding a single render button at the bottom of the page
-    slider_groups.append(dbc.Button('Render Graphs', id='render-all-graphs', className='mt-4', n_clicks=0))
-
+    slider_groups.append(html.Button('Render Graphs', id='render-all-graphs', className='mt-4', n_clicks=0))
     return html.Div(slider_groups)
 
 
@@ -129,6 +129,8 @@ def update_weights_output(n_clicks, data):
             dbc.Col(dcc.Graph(figure=chart['pie_fig']), width=6)
         ]) for _, chart in charts_dict.items()
     ]
+
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)

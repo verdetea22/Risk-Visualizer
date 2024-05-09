@@ -4,12 +4,16 @@ from dash.dependencies import Input, Output, State, ALL
 import dash_bootstrap_components as dbc
 
 from weights_tab import weights_tab_layout, update_sliders, render_graphics
+from risk_index_tab import risk_index_tab_layout  # Assuming similar structure for risk index
+from summary_tab import summary_tab_layout
+
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
 
 
 app.layout = html.Div([
-    dcc.Store(id='app-data'),  # Central storage for app data
+    dcc.Store(id='weights-data', storage_type='local'),  # Using local storage to persist data
+    dcc.Store(id='risk-index-data', storage_type='local'),
     dcc.Tabs(id='app-tabs', children=[
         dcc.Tab(label='Weights', value='weights-tab'),
         dcc.Tab(label='Risk Index', value='risk-index-tab'),
@@ -47,6 +51,8 @@ def trigger_update_sliders(contents):
 )
 def trigger_render_graphics(n_clicks, contents, slider_values, slider_ids):
     return render_graphics(n_clicks, contents, slider_values, slider_ids)
+
+
 
 
 if __name__ == '__main__':

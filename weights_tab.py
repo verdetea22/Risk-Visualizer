@@ -1,3 +1,4 @@
+#weights_tab.py
 import dash
 from dash import dcc, html, Input, Output, State, ALL, callback
 import dash_bootstrap_components as dbc
@@ -7,6 +8,10 @@ import pandas as pd
 from utils import parse_contents
 from mitigation import mitigation_strategies
 
+def process_weights_data(inputs):
+    # Example: Return the inputs as processed data, or perform some calculations.
+    processed_data = {'processed_data': inputs}  # Mock processing
+    return processed_data
 
 # Function to calculate priority vector from pairwise matrix
 def calculate_priority_vector(matrix):
@@ -62,27 +67,34 @@ def weights_tab_layout():
 def update_sliders(contents):
     if contents:
         df = parse_contents(contents)
-        sliders = []
-        risk_drivers = df['Risk Drivers'].unique()
-        for driver in risk_drivers:
-            sub_drivers = df[df['Risk Drivers'] == driver]['Sub Risk Drivers']
-            sliders_for_driver = [html.Div([
+        return generate_sliders_layout(df)
+    return 'Please upload an Excel file'
+
+def generate_sliders_layout(df):
+    sliders = []
+    risk_drivers = df['Risk Drivers'].unique()
+    for driver in risk_drivers:
+        sub_drivers = df[df['Risk Drivers'] == driver]['Sub Risk Drivers']
+        sliders_for_driver = [
+            html.Div([
                 html.Label(sub_driver),
                 dcc.Slider(
                     id={'type': 'dynamic-slider', 'index': f"{driver}-{sub_driver}"},
                     min=1,
                     max=9,
                     step=1,
-                    value=1,
+                    value=5,  # Assuming a starting value, adjust as needed
                     marks={i: str(i) for i in range(10)}
                 )
-            ]) for sub_driver in sub_drivers]
-            sliders.append(html.Div([
-                html.H3(driver),
-                html.Div(sliders_for_driver, style={'border': 'thin lightgrey solid', 'padding': '20px'})
-            ]))
-        return sliders
-    return 'Please upload an Excel file'
+            ], style={'padding': '10px'})
+            for sub_driver in sub_drivers
+        ]
+        sliders.append(html.Div([
+            html.H3(driver),
+            html.Div(sliders_for_driver, style={'border': 'thin lightgrey solid', 'padding': '20px'})
+        ]))
+    return sliders
+
 
 @callback(
     Output('graphs-container', 'children'),
@@ -124,6 +136,24 @@ def render_graphics(n_clicks, contents, slider_values, slider_ids):
             ], style={'margin-bottom': '50px'}))
         return divs
     return html.Div('No data to display, please upload a file and render the graphs.')
+
+
+
+dcc.Store(id='weights-data'),
+dcc.Store(id='risk-index-data')
+
+
+@callback(
+    Output('weights-data', 'data'),
+    Input('render-weights-button', 'n_clicks'),
+    State('weights-inputs', 'value')  # Assume you collect inputs from user
+)
+def update_weights_data(n_clicks, inputs):
+    if n_clicks:
+        processed_data = process_weights_data(inputs)
+        return processed_data
+    return dash.no_update
+
 
 TEXT_STYLE = {
     'textAlign': 'center',

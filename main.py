@@ -1,11 +1,12 @@
 import dash
 from dash import dcc, html, Dash
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State, ALL
 import dash_bootstrap_components as dbc
 
-from weights_tab import weights_tab_layout, render_graphics
+from weights_tab import weights_tab_layout, update_sliders, render_graphics
 
-app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
+
 
 app.layout = html.Div([
     dcc.Store(id='app-data'),  # Central storage for app data
@@ -29,6 +30,24 @@ def render_tab(tab):
     elif tab == 'summary-tab':
         return html.Div("Summary & Mitigation Tab Content")
     return html.Div("Select a tab")
+
+@app.callback(
+    Output('sliders-container', 'children'),
+    Input('upload-data', 'contents')
+)
+def trigger_update_sliders(contents):
+    return update_sliders(contents)
+
+@app.callback(
+    Output('graphs-container', 'children'),
+    Input('render-button', 'n_clicks'),
+    State('upload-data', 'contents'),
+    State({'type': 'dynamic-slider', 'index': ALL}, 'value'),
+    State({'type': 'dynamic-slider', 'index': ALL}, 'id')
+)
+def trigger_render_graphics(n_clicks, contents, slider_values, slider_ids):
+    return render_graphics(n_clicks, contents, slider_values, slider_ids)
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)

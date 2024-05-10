@@ -29,36 +29,38 @@ app.layout = html.Div([
 
 @app.callback(
     Output('data-store', 'data'),
-    Input('upload-data', 'contents'),
+    [Input('upload-data', 'contents'),
+     State('upload-data', 'filename')],
     prevent_initial_call=True
 )
-def process_data(contents):
+def process_data(contents, filenames):
     if contents:
         datasets = [pd.read_excel(io.BytesIO(base64.b64decode(c.split(',')[1]))).to_dict('records') for c in contents]
-        return datasets
-    return []
+        return {'data': datasets, 'filenames': filenames}
+    return {}
 
 @app.callback(
     [Output('graphs-container', 'children'), Output('mitigation-container', 'children')],
     Input('data-store', 'data'),
     prevent_initial_call=True
 )
-def update_output(data):
-    if data:
+def update_output(stored_data):
+    if stored_data and 'data' in stored_data and 'filenames' in stored_data:
+        data = stored_data['data']
+        filenames = stored_data['filenames']
         figures = []
-        dfs_with_risk = []  # List to hold DataFrames that have 'Weighted Risk'
+        dfs_with_risk = []
         
-        for d in data:
-            df = pd.DataFrame(d)
+        for df_data, filename in zip(data, filenames):
+            df = pd.DataFrame(df_data)
             if 'Weight' in df.columns and 'Risk Index' in df.columns:
                 df['Weighted Risk'] = df['Weight'] * df['Risk Index']
-                fig = px.bar(df, x='Sub Risk Drivers', y='Weighted Risk', color='Risk Index', title="Risk Analysis per File")
+                fig = px.bar(df, x='Sub Risk Drivers', y='Weighted Risk', color='Risk Index', title=f"Risk Analysis for {filename}")
                 figures.append(dcc.Graph(figure=fig))
-                dfs_with_risk.append(df)  # Add to list only if 'Weighted Risk' was calculated
+                dfs_with_risk.append(df)
             else:
-                figures.append(html.Div("Required columns missing in uploaded file."))
-
-        # Check if there are any DataFrames to concatenate
+                figures.append(html.Div(f"Required columns missing in {filename}."))
+        
         if dfs_with_risk:
             df_all = pd.concat(dfs_with_risk)
             top_risks = df_all.sort_values(by='Weighted Risk', ascending=False).head(5)

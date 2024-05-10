@@ -14,19 +14,18 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 # Layout
 app.layout = html.Div([
-    dcc.Store(id='data-store'),  # Store uploaded data
+    dcc.Store(id='data-store'),
     dcc.Upload(
         id='upload-data',
         children=html.Button('Upload File', className='btn btn-primary'),
         style={'width': '100%', 'height': '50px', 'lineHeight': '50px'},
         multiple=True
     ),
-    html.Div(id='file-list', style={'margin': '20px'}),  # Placeholder for file list
+    html.Div(id='file-list', style={'margin': '20px'}),
     html.Div(id='graphs-container'),
     html.Div(id='mitigation-container'),
-    html.Div(id='summary-output')  # Ensure this is in the initial layout
+    html.Div(id='summary-output')
 ])
-
 
 @app.callback(
     Output('data-store', 'data'),
@@ -35,51 +34,57 @@ app.layout = html.Div([
 )
 def process_data(contents):
     if contents:
-        datasets = []
-        for content in contents:
-            content_type, content_string = content.split(',')
-            decoded = base64.b64decode(content_string)
-            df = pd.read_excel(io.BytesIO(decoded))
-            datasets.append(df.to_dict('records'))
+        datasets = [pd.read_excel(io.BytesIO(base64.b64decode(c.split(',')[1]))).to_dict('records') for c in contents]
         return datasets
     return []
 
 @app.callback(
-    [Output('graphs-container', 'children'),
-     Output('mitigation-container', 'children')],
+    [Output('graphs-container', 'children'), Output('mitigation-container', 'children')],
     Input('data-store', 'data'),
     prevent_initial_call=True
 )
 def update_output(data):
     if data:
-        df = pd.concat([pd.DataFrame(d) for d in data])
-        df['Weighted Risk'] = df['Weight'] * df['Risk Index']
-        # Plotting the risks for all sub risk drivers
-        fig = px.bar(df, x='Sub Risk Drivers', y='Weighted Risk', color='Risk Index')
+        figures = []
+        dfs_with_risk = []  # List to hold DataFrames that have 'Weighted Risk'
+        
+        for d in data:
+            df = pd.DataFrame(d)
+            if 'Weight' in df.columns and 'Risk Index' in df.columns:
+                df['Weighted Risk'] = df['Weight'] * df['Risk Index']
+                fig = px.bar(df, x='Sub Risk Drivers', y='Weighted Risk', color='Risk Index', title="Risk Analysis per File")
+                figures.append(dcc.Graph(figure=fig))
+                dfs_with_risk.append(df)  # Add to list only if 'Weighted Risk' was calculated
+            else:
+                figures.append(html.Div("Required columns missing in uploaded file."))
 
-        # Generating mitigation strategies for top risk sub drivers
-        top_risks = df.sort_values(by='Weighted Risk', ascending=False).head(5)
-        mitigation_elements = [html.H5("Mitigation Strategies")]
-        for sub_driver in top_risks['Sub Risk Drivers']:
-            strategies = mitigation_strategies.get(sub_driver, ["No specific mitigation strategy provided."])
-            mitigation_elements.append(html.Div([
-                html.H6(sub_driver),
-                html.Ul([html.Li(s) for s in strategies])
-            ]))
+        # Check if there are any DataFrames to concatenate
+        if dfs_with_risk:
+            df_all = pd.concat(dfs_with_risk)
+            top_risks = df_all.sort_values(by='Weighted Risk', ascending=False).head(5)
+            mitigation_elements = [html.H5("Mitigation Strategies")] + [
+                html.Div([
+                    html.H6(sub_driver),
+                    html.Ul([html.Li(s) for s in mitigation_strategies.get(sub_driver, ["No specific mitigation strategy provided."])])
+                ]) for sub_driver in top_risks['Sub Risk Drivers']
+            ]
+        else:
+            mitigation_elements = [html.Div("No data with 'Weighted Risk' found to analyze mitigation strategies.")]
 
-        return dcc.Graph(figure=fig), html.Div(mitigation_elements)
+        return figures, html.Div(mitigation_elements)
     return html.Div("No file uploaded."), html.Div()
 
-# Callback to list files
+
+
+
 @app.callback(
     Output('file-list', 'children'),
     Input('upload-data', 'contents'),
     State('upload-data', 'filename'),
-    State('upload-data', 'last_modified'),
     prevent_initial_call=True
 )
-def update_file_list(list_of_contents, list_of_names, list_of_dates):
-    if list_of_contents is not None:
+def update_file_list(list_of_contents, list_of_names):
+    if list_of_contents:
         children = [
             html.Div([
                 html.Button(filename, id={'type': 'file-button', 'index': i}, n_clicks=0, className='btn btn-link')
@@ -88,19 +93,13 @@ def update_file_list(list_of_contents, list_of_names, list_of_dates):
         return children
     return "No files uploaded."
 
-
 def calculate_overall_risk_evaluation(dataframe):
-    # Calculate the weighted risk for each sub risk driver
     dataframe['Weighted Risk'] = dataframe['Weight'] * dataframe['Risk Index']
-    
-    # Aggregate the weighted risks for each risk driver category
     overall_risk_scores = dataframe.groupby('Risk Drivers')['Weighted Risk'].sum()
-    
     return overall_risk_scores
 
-# Callback to handle file selection and process data
 @app.callback(
-    Output('summary-output', 'children',allow_duplicate=True),
+    Output('summary-output', 'children'),
     Input({'type': 'file-button', 'index': ALL}, 'n_clicks'),
     State('upload-data', 'contents'),
     State('upload-data', 'filename'),
@@ -116,9 +115,7 @@ def display_summary(n_clicks, list_of_contents, list_of_filenames):
         content_type, content_string = list_of_contents[file_index].split(',')
         decoded = base64.b64decode(content_string)
         df = pd.read_excel(io.BytesIO(decoded))
-        
-        # Process data
-        overall_scores = calculate_overall_risk_evaluation(df)  # Assuming this function is defined
+        overall_scores = calculate_overall_risk_evaluation(df)
         
         return html.Div([
             html.H5(f"Summary for {list_of_filenames[file_index]}"),

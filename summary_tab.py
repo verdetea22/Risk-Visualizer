@@ -12,6 +12,15 @@ from mitigation import mitigation_strategies
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
+# Define CSS styles
+mitigation_box_style = {
+    'border': '1px solid #ccc',
+    'border-radius': '5px',
+    'padding': '10px',
+    'margin': '10px 0',
+    'background-color': '#f9f9f9'
+}
+
 # Layout
 app.layout = html.Div([
     dcc.Store(id='data-store'),
@@ -62,17 +71,19 @@ def update_output(stored_data):
             df = pd.DataFrame(df_data)
             if 'Weight' in df.columns and 'Risk Index' in df.columns:
                 df['Weighted Risk'] = df['Weight'] * df['Risk Index']
+                df.sort_values('Weighted Risk', ascending=False, inplace=True)  # Sort by 'Weighted Risk' in descending order
                 fig = px.bar(df, x='Sub Risk Drivers', y='Weighted Risk', color='Risk Index', title=f"Risk Analysis for {filename}")
                 figures.append(dcc.Graph(figure=fig))
                 
                 # Calculate top 5 risks and mitigation for each file
                 top_risks = df.nlargest(5, 'Weighted Risk')
-                mitigation = [html.H5(f"Mitigation Strategies for {filename}")] + [
+                mitigation = [html.H5(f"Mitigation Strategies for {filename}")]
+                mitigation.extend([
                     html.Div([
                         html.H6(risk['Sub Risk Drivers']),
                         html.Ul([html.Li(s) for s in mitigation_strategies.get(risk['Sub Risk Drivers'], ["No specific mitigation strategy provided."])])
-                    ]) for _, risk in top_risks.iterrows()
-                ]
+                    ], style=mitigation_box_style) for _, risk in top_risks.iterrows()
+                ])
                 figures.append(html.Div(mitigation))
                 figures.append(html.Hr())  # Divider
                 dfs_with_risk.append(df)
@@ -80,22 +91,45 @@ def update_output(stored_data):
         # Master chart and mitigation strategies
         if dfs_with_risk:
             df_all = pd.concat(dfs_with_risk)
+            df_all.sort_values('Weighted Risk', ascending=False, inplace=True)  # Sort by 'Weighted Risk' in descending order
+            
+            # Create the master chart
             master_fig = px.bar(df_all.groupby('Sub Risk Drivers')['Weighted Risk'].mean().reset_index(), x='Sub Risk Drivers', y='Weighted Risk', title="Master Risk Analysis")
+            
+            # Sort bars in descending order
+            master_fig.update_traces(marker_color='green')  # Default color
+            master_fig.update_traces(marker_color='yellow', selector=dict(type='bar', marker=dict(color='yellow')), row=0, col=0)
+            master_fig.update_traces(marker_color='red', selector=dict(type='bar', marker=dict(color='red')), row=0, col=0)
+
+            # Color top 5 red, next 5 yellow, rest green
+            sorted_df = df_all.groupby('Sub Risk Drivers')['Weighted Risk'].mean().reset_index().sort_values(by='Weighted Risk', ascending=False)
+            top_risks = sorted_df.head(5)
+            next_risks = sorted_df.iloc[5:10]
+            top_risks_names = top_risks['Sub Risk Drivers']
+            next_risks_names = next_risks['Sub Risk Drivers']
+            top_indices = [i for i, name in enumerate(master_fig.data[0].x) if name in top_risks_names]
+            next_indices = [i for i, name in enumerate(master_fig.data[0].x) if name in next_risks_names]
+
+            for index in top_indices:
+                master_fig.data[0].marker.color[index] = 'red'
+            for index in next_indices:
+                master_fig.data[0].marker.color[index] = 'yellow'
+
             master_chart = dcc.Graph(figure=master_fig)
             master_top_risks = df_all.nlargest(5, 'Weighted Risk')
-            master_mitigation = [html.H5("Mitigation Strategies for Master Chart")] + [
+            master_mitigation = [html.H5("Mitigation Strategies for Master Chart")]
+            master_mitigation.extend([
                 html.Div([
                     html.H6(risk['Sub Risk Drivers']),
                     html.Ul([html.Li(s) for s in mitigation_strategies.get(risk['Sub Risk Drivers'], ["No specific mitigation strategy provided."])])
-                ]) for _, risk in master_top_risks.iterrows()
-            ]
+                ], style=mitigation_box_style) for _, risk in master_top_risks.iterrows()
+            ])
         else:
             master_chart = html.Div("No data available for Master Chart.")
             master_mitigation = [html.Div("No data with 'Weighted Risk' found to analyze mitigation strategies.")]
 
         return figures, master_chart, html.Div(master_mitigation)
     return [], html.Div("No file uploaded."), html.Div()
-
 
 
 @app.callback(
@@ -115,6 +149,7 @@ def calculate_overall_risk_evaluation(dataframe):
     dataframe['Weighted Risk'] = dataframe['Weight'] * dataframe['Risk Index']
     overall_risk_scores = dataframe.groupby('Risk Drivers')['Weighted Risk'].sum()
     return overall_risk_scores
+
 
 @app.callback(
     Output('summary-output', 'children'),
@@ -144,6 +179,7 @@ def display_summary(n_clicks, list_of_contents, list_of_filenames):
                 }
             )
         ])
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)

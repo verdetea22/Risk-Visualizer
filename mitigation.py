@@ -70,9 +70,64 @@ mitigation_strategies = {
         html.P("Secure alternative suppliers for critical components to reduce dependency."),
     ],
 
+    # Additional Mitigation Strategies
+    # Process
+    'Project Testing and Training': [
+        html.P("Implement robust testing protocols throughout the project lifecycle to identify and address potential issues early on."),
+        html.P("Provide comprehensive training programs for project teams to ensure competency in project management methodologies and tools."),
+    ],
+    'Software Engineering Resources': [
+        html.P("Regularly assess and forecast resource requirements to avoid shortages or overloads."),
+        html.P("Invest in talent development programs to nurture a skilled software engineering workforce and reduce reliance on external resources."),
+    ],
+
     # Downstream
-    'Baggage Handling System Failure': [
-        html.P("Conduct regular maintenance and simulations to ensure baggage system reliability."),
-        html.P("Invest in technology upgrades and staff training for efficient baggage handling operations."),
+    'Capital Expenditure Risk': [
+        html.P("Conduct thorough feasibility studies and risk assessments before committing to capital expenditures."),
+        html.P("Implement stringent project management practices to monitor and control capital expenditure budgets."),
+    ],
+    'Technology Investment Risk': [
+        html.P("Diversify technology investments across multiple platforms and vendors to mitigate the risk of technology obsolescence."),
+        html.P("Regularly evaluate the performance and alignment of technology investments with business objectives, adjusting strategies as needed."),
+    ],
+    'Operational Disruption Risk': [
+        html.P("Develop robust contingency plans and business continuity strategies to minimize the impact of operational disruptions."),
+        html.P("Invest in redundant systems and alternative operational pathways to ensure continuity of critical operations during disruptions."),
+    ],
+
+    # Organization Structure
+    'Project Management Complexity': [
+        html.P("Employ experienced project managers with a track record of successfully navigating complex projects."),
+        html.P("Utilize project management software and tools to streamline project workflows and communication channels."),
+    ],
+
+    # Environment
+    'Infrastructure Integration Risk': [
+        html.P("Conduct thorough compatibility assessments and pilot tests before integrating new infrastructure components into existing systems."),
+        html.P("Collaborate closely with infrastructure vendors and IT teams to ensure seamless integration and minimize disruption."),
+    ],
+
+    # Upstream
+    'Supplier Coordination Risk': [
+        html.P("Establish clear communication channels and performance metrics with suppliers to facilitate effective coordination."),
+        html.P("Leverage technology solutions such as supplier portals for real-time collaboration and information exchange."),
+    ],
+    'Capacity Expansion Risk': [
+        html.P("Adopt flexible manufacturing processes and scalable infrastructure to accommodate fluctuating demand."),
+        html.P("Diversify sourcing strategies to include multiple suppliers with varying production capacities."),
+    ],
+
+    # Technological Complexity
+    'IT System Integration Risk': [
+        html.P("Utilize standardized integration protocols and APIs to facilitate seamless communication between IT systems."),
+        html.P("Conduct rigorous testing and validation processes during system integration to identify and address potential compatibility issues."),
+    ],
+    'Technological Infrastructure Risk': [
+        html.P("Regularly assess the health and performance of technological infrastructure components, prioritizing upgrades and replacements as needed."),
+        html.P("Implement proactive monitoring and maintenance protocols to identify and mitigate potential infrastructure failures before they occur."),
+    ],
+    'Innovation and Change Management Risk': [
+        html.P("Cultivate a culture of innovation and change readiness within the organization through incentives, training, and recognition programs."),
+        html.P("Establish dedicated change management teams to facilitate smooth transitions during technological innovations and process changes."),
     ],
 }

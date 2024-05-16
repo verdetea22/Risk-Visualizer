@@ -32,8 +32,16 @@ app.layout = html.Div([
     ),
     dbc.Card(id='file-list', style={'margin': '20px', 'padding': '10px'}),
     dcc.Tabs(id='tabs', children=[
-        dcc.Tab(label='Individual Assessments', children=[html.Div(id='graphs-container')]),
-        dcc.Tab(label='Master Chart', children=[html.Div(id='master-chart-container')]),
+        dcc.Tab(label='Individual Assessments', children=[
+            html.P("Individual Assessments:"),
+            html.Hr(),
+            html.Div(id='graphs-container')
+        ]),
+        dcc.Tab(label='Master Chart', children=[
+            html.P("Master Chart:"),
+            html.Hr(),
+            html.Div(id='master-chart-container')
+        ]),
     ]),
     html.Div(id='mitigation-container'),
     html.Div(id='summary-output')  # This is the new element where summaries will be displayed
@@ -73,7 +81,12 @@ def update_output(stored_data):
                 df['Weighted Risk'] = df['Weight'] * df['Risk Index']
                 df.sort_values('Weighted Risk', ascending=False, inplace=True)  # Sort by 'Weighted Risk' in descending order
                 fig = px.bar(df, x='Sub Risk Drivers', y='Weighted Risk', color='Risk Index', title=f"Risk Analysis for {filename}")
-                figures.append(dcc.Graph(figure=fig))
+                figures.append(html.Div([
+                    html.P(f"Assessment and Mitigation Plan for {filename}:"),
+                    html.Hr(),
+                    dcc.Graph(figure=fig),
+                    html.Hr()  # Divider after each file's assessment and mitigation plan
+                ]))
                 
                 # Calculate top 5 risks and mitigation for each file
                 top_risks = df.nlargest(5, 'Weighted Risk')
@@ -85,7 +98,6 @@ def update_output(stored_data):
                     ], style=mitigation_box_style) for _, risk in top_risks.iterrows()
                 ])
                 figures.append(html.Div(mitigation))
-                figures.append(html.Hr())  # Divider
                 dfs_with_risk.append(df)
 
         # Master chart and mitigation strategies
@@ -101,21 +113,9 @@ def update_output(stored_data):
             master_fig.update_traces(marker_color='yellow', selector=dict(type='bar', marker=dict(color='yellow')), row=0, col=0)
             master_fig.update_traces(marker_color='red', selector=dict(type='bar', marker=dict(color='red')), row=0, col=0)
 
-            # Color top 5 red, next 5 yellow, rest green
-            sorted_df = df_all.groupby('Sub Risk Drivers')['Weighted Risk'].mean().reset_index().sort_values(by='Weighted Risk', ascending=False)
-            top_risks = sorted_df.head(5)
-            next_risks = sorted_df.iloc[5:10]
-            top_risks_names = top_risks['Sub Risk Drivers']
-            next_risks_names = next_risks['Sub Risk Drivers']
-            top_indices = [i for i, name in enumerate(master_fig.data[0].x) if name in top_risks_names]
-            next_indices = [i for i, name in enumerate(master_fig.data[0].x) if name in next_risks_names]
-
-            for index in top_indices:
-                master_fig.data[0].marker.color[index] = 'red'
-            for index in next_indices:
-                master_fig.data[0].marker.color[index] = 'yellow'
-
+            # Color top 5 red, next 5 yellow, and rest green
             master_chart = dcc.Graph(figure=master_fig)
+            
             master_top_risks = df_all.nlargest(5, 'Weighted Risk')
             master_mitigation = [html.H5("Mitigation Strategies for Master Chart")]
             master_mitigation.extend([
@@ -171,13 +171,15 @@ def display_summary(n_clicks, list_of_contents, list_of_filenames):
         overall_scores = calculate_overall_risk_evaluation(df)
         
         return html.Div([
+           html.Br(),
             html.H5(f"Summary for {list_of_filenames[file_index]}"),
             dcc.Graph(
                 figure={
                     'data': [{'x': overall_scores.index, 'y': overall_scores.values, 'type': 'bar'}],
                     'layout': {'title': 'Risk Evaluation Scores'}
                 }
-            )
+            ),
+            html.Br()
         ])
 
 

@@ -68,27 +68,27 @@ This dashboard allows users to upload multiple Excel files to generate a compreh
 - Text summary of risk levels based on the analysis.
 
 ---
-
-
-## Utility Functions (utils.py)
-### This file contains utility functions used across different applications, such as functions for parsing uploaded Excel files.
-
----
-
-## Mitigation Strategies (mitigation.py)
-### This file includes a list of mitigation strategies for high-risk sub-risk drivers. It is used in conjunction with the other applications to suggest actionable steps for mitigating identified risks.
-
----
 **Note:** Ensure that the input Excel files conform to the expected format specified in the applications' instructions for proper functionality.
 
-# Excel File Formats
+## Excel File Formats
 ### Each application expects Excel files in a specific format. Ensure your files match the following structures:
 
-## Risk Weights Analysis
-### Columns: Risk Drivers, Sub Risk Drivers, Weight, Risk Index
+### Risk Weights Analysis
+- Columns: Risk Drivers, Sub Risk Drivers, Weight, Risk Index
 
-## Simple Risk Index Analysis Dashboard
-### Columns: Risk Drivers, Sub Risk Drivers, Current Status
+### Simple Risk Index Analysis Dashboard
+- Columns: Risk Drivers, Sub Risk Drivers, Current Status
 
-## Summary Dashboard
-### Columns: Risk Drivers, Sub Risk Drivers, Weight, Risk Index
+### Summary Dashboard
+- Columns: Risk Drivers, Sub Risk Drivers, Weight, Risk Index
+---
+## Helper Functions
+
+### Utility Functions (utils.py)
+#### This file contains utility functions used across different applications, such as functions for parsing uploaded Excel files.
+
+
+### Mitigation Strategies (mitigation.py)
+#### This file includes a list of mitigation strategies for high-risk sub-risk drivers. It is used in conjunction with the other applications to suggest actionable steps for mitigating identified risks.
+
+

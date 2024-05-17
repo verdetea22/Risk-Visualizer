@@ -2,6 +2,7 @@ import dash
 from dash import dcc, html, Input, Output, State, ALL, callback
 import dash_bootstrap_components as dbc
 import plotly.express as px
+import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
 import base64
@@ -40,6 +41,7 @@ app.layout = html.Div([
         dcc.Tab(label='Master Chart', children=[
             html.P("Master Chart:"),
             html.Hr(),
+            html.Div(id='summary-chart-container'),  # New summary chart container
             html.Div(id='master-chart-container')
         ]),
     ]),
@@ -63,6 +65,7 @@ def process_data(contents, filenames):
 
 @app.callback(
     [Output('graphs-container', 'children'),
+     Output('summary-chart-container', 'children'),  # Add output for summary chart
      Output('master-chart-container', 'children'),
      Output('mitigation-container', 'children')],
     Input('data-store', 'data'),
@@ -105,16 +108,50 @@ def update_output(stored_data):
             df_all = pd.concat(dfs_with_risk)
             df_all.sort_values('Weighted Risk', ascending=False, inplace=True)  # Sort by 'Weighted Risk' in descending order
             
-            # Create the master chart
-            master_fig = px.bar(df_all.groupby('Sub Risk Drivers')['Weighted Risk'].mean().reset_index(), x='Sub Risk Drivers', y='Weighted Risk', title="Master Risk Analysis")
+            # Create the master chart with mean and standard deviation
+            df_grouped = df_all.groupby('Sub Risk Drivers')['Weighted Risk'].agg(['mean', 'std']).reset_index()
+            df_grouped.columns = ['Sub Risk Drivers', 'Mean Weighted Risk', 'Standard Deviation']
             
-            # Sort bars in descending order
-            master_fig.update_traces(marker_color='green')  # Default color
-            master_fig.update_traces(marker_color='yellow', selector=dict(type='bar', marker=dict(color='yellow')), row=0, col=0)
-            master_fig.update_traces(marker_color='red', selector=dict(type='bar', marker=dict(color='red')), row=0, col=0)
-
-            # Color top 5 red, next 5 yellow, and rest green
+            # Sort the grouped DataFrame by mean weighted risk
+            df_grouped.sort_values('Mean Weighted Risk', ascending=False, inplace=True)
+            
+            master_fig = go.Figure()
+            master_fig.add_trace(go.Bar(
+                x=df_grouped['Sub Risk Drivers'],
+                y=df_grouped['Mean Weighted Risk'],
+                name='Mean Weighted Risk',
+                marker_color='blue'
+            ))
+            
+            # Add error bars for standard deviation
+            master_fig.add_trace(go.Bar(
+                x=df_grouped['Sub Risk Drivers'],
+                y=df_grouped['Standard Deviation'],
+                name='Standard Deviation',
+                marker_color='orange'
+            ))
+            
+            master_fig.update_layout(
+                title="Master Risk Analysis",
+                barmode='group',
+                xaxis_title="Sub Risk Drivers",
+                yaxis_title="Values",
+                legend_title="Metrics"
+            )
+            
             master_chart = dcc.Graph(figure=master_fig)
+
+            # Summary statistics
+            top_5_risks = df_grouped.nlargest(5, 'Mean Weighted Risk')
+            top_5_std = df_grouped.nlargest(5, 'Standard Deviation')
+            overall_std = df_grouped['Standard Deviation'].mean()
+            
+            summary_chart = html.Div([
+                html.H5("Summary Statistics:"),
+                html.P(f"Top 5 Sub Risk Categories with Greatest Risk: {', '.join(top_5_risks['Sub Risk Drivers'])}"),
+                html.P(f"Top 5 Sub Risk Categories with Greatest Standard Deviation: {', '.join(top_5_std['Sub Risk Drivers'])}"),
+                html.P(f"Overall Standard Deviation: {overall_std:.2f}")
+            ])
             
             master_top_risks = df_all.nlargest(5, 'Weighted Risk')
             master_mitigation = [html.H5("Mitigation Strategies for Master Chart")]
@@ -126,10 +163,11 @@ def update_output(stored_data):
             ])
         else:
             master_chart = html.Div("No data available for Master Chart.")
+            summary_chart = html.Div("No data available for Summary Chart.")
             master_mitigation = [html.Div("No data with 'Weighted Risk' found to analyze mitigation strategies.")]
 
-        return figures, master_chart, html.Div(master_mitigation)
-    return [], html.Div("No file uploaded."), html.Div()
+        return figures, summary_chart, master_chart, html.Div(master_mitigation)
+    return [], html.Div("No file uploaded."), html.Div(), html.Div()
 
 
 @app.callback(

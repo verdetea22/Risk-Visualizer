@@ -64,7 +64,6 @@ def process_data(contents, filenames):
         return {'data': datasets, 'filenames': filenames}
     return {}
 
-
 @app.callback(
     Output('graphs-container', 'children'),
     Input('data-store', 'data'),
@@ -87,11 +86,27 @@ def update_individual_assessments(stored_data):
             if 'Weight' in df.columns and 'Risk Index' in df.columns:
                 df['Weighted Risk'] = df['Weight'] * df['Risk Index']
                 df.sort_values('Weighted Risk', ascending=False, inplace=True)  # Sort by 'Weighted Risk' in descending order
-                bar_fig = px.bar(df, x='Sub Risk Drivers', y='Weighted Risk', color='Risk Index', title=f"Risk Analysis for {filename}")
+
+                # Define color based on the specified ranges for Weighted Risk
+                df['Color'] = df['Weighted Risk'].apply(
+                    lambda x: 'green' if x <= 1 else 'orange' if 1 < x <= 2 else 'red')
+
+                bar_fig = px.bar(df, x='Sub Risk Drivers', y='Weighted Risk', color='Color', title=f"Risk Analysis for {filename}")
+                bar_fig.update_traces(marker=dict(color=df['Color']))  # Update bar colors
+                bar_fig.update_layout(xaxis={'categoryorder': 'total descending'})  # Sort bars in descending order
+
+                # Summary box for top 5 risks
+                top_5_risks = df.nlargest(5, 'Weighted Risk')
+                summary = html.Div([
+                    html.H5(f"Top 5 Largest Risks for {filename}:"),
+                    html.Ul([html.Li(f"{row['Sub Risk Drivers']}: Weighted Risk Index: {row['Weighted Risk']:.1f}") for _, row in top_5_risks.iterrows()])
+                ], style={'padding': '10px', 'backgroundColor': '#f9f9f9', 'border': '1px solid #ccc', 'borderRadius': '5px', 'margin': '10px 0'})
+
                 individual_figures.append(html.Div([
                     html.P(f"Assessment and Mitigation Plan for {filename}:"),
                     html.Hr(),
                     dcc.Graph(figure=bar_fig),
+                    summary,
                     html.Hr()  # Divider after each file's assessment and mitigation plan
                 ]))
 
@@ -105,7 +120,18 @@ def update_individual_assessments(stored_data):
                                      y='Risk Index', 
                                      color='Stakeholder', 
                                      size='Weight', 
-                                     title="Combined Risk Assessment Scatterplot")
+                                     title="Combined Risk Assessment Scatterplot",
+                                     labels={"Risk Index": "Risk Index (Higher is worse)"})  # Add label for y-axis
+
+            # Recommendations for making scatter plot more intuitive
+            scatter_fig.update_layout(
+                title="Combined Risk Assessment Scatterplot",
+                xaxis_title="Sub Risk Drivers",
+                yaxis_title="Risk Index",
+                legend_title="Stakeholder"
+            )
+            scatter_fig.update_traces(marker=dict(opacity=0.8), selector=dict(mode='markers'))
+
             return [html.Div([
                 html.P("Combined Scatterplot:"),
                 html.Hr(),
@@ -117,6 +143,7 @@ def update_individual_assessments(stored_data):
             print("Required columns are missing in the combined DataFrame")  # Debug print
 
     return [html.Div("No data available for scatter plot.")]
+
 
 
 

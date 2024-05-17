@@ -70,6 +70,11 @@ This dashboard allows users to upload multiple Excel files to generate a compreh
 ---
 **Note:** Ensure that the input Excel files conform to the expected format specified in the applications' instructions for proper functionality.
 
+## Folder: Risk Dashboard Files to Run
+
+This folder contains different Excel files used by the various applications in the repository. The `_HEATHROW_SUMMARY_.xlsx` files are used by the `summary.py` program, and the `_HEATHROW_ABRIDGED_.xlsx` file is used by the `Risk Weights.py` and `Risk Index Status.py` programs.
+
+
 ## Excel File Formats
 ### Each application expects Excel files in a specific format. Ensure your files match the following structures:
 

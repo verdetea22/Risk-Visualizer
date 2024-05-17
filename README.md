@@ -6,7 +6,7 @@
 These Python applications are designed as Dash web-based dashboards for analyzing risk factors in various scenarios, allowing users to upload data and visually interact with risk assessments. The applications use Plotly for graphical representations, and Dash with Bootstrap components for the user interface.
 
 ## Installation 
-Install required libraries: `pip install dash dash-bootstrap-components plotly pandas numpy io json`
+### Install required libraries: `pip install dash dash-bootstrap-components plotly pandas numpy io json`
 ---
 
 ## Application 1: Risk Weights Analysis (Risk Weights.py)
@@ -15,7 +15,7 @@ Install required libraries: `pip install dash dash-bootstrap-components plotly p
 This application enables users to upload Excel files containing data about risk drivers and their sub-components. Users can adjust sliders to rank the importance of each sub-risk driver relative to one another. The application then calculates and displays a priority vector and risk index through bar and pie charts, highlighting the most important sub-risk driver and suggesting mitigation strategies.
 
 ### How to Run
-1. Install required libraries: `pip install dash dash-bootstrap-components plotly pandas numpy`
+1. Install required libraries
 2. Run the script: `python Risk Weights.py`
 3. Access the web interface through the local server address provided (usually `http://127.0.0.1:8050/`).
 4. Use the "Upload File" button to load your data.

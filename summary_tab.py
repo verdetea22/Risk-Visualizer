@@ -23,6 +23,7 @@ mitigation_box_style = {
 }
 
 # Layout
+# Layout
 app.layout = html.Div([
     dcc.Store(id='data-store'),
     dcc.Upload(
@@ -48,6 +49,7 @@ app.layout = html.Div([
     html.Div(id='mitigation-container'),
     html.Div(id='summary-output')  # This is the new element where summaries will be displayed
 ])
+
 
 @app.callback(
     Output('data-store', 'data'),
@@ -115,6 +117,17 @@ def update_individual_assessments(stored_data):
 
         # Check if required columns are present
         if {'Weight', 'Risk Index', 'Sub Risk Drivers', 'Stakeholder'}.issubset(combined_df.columns):
+            # Heatmap for combined data
+            heatmap_data = combined_df.pivot_table(values='Risk Index', index='Stakeholder', columns='Sub Risk Drivers')
+            heatmap_fig = px.imshow(heatmap_data, aspect='auto', title="Heatmap of Risk Assessments", color_continuous_scale=['green', 'orange', 'red'])
+
+            # Summary box for heatmap top 5 risks
+            top_5_heatmap_risks = combined_df.nlargest(5, 'Risk Index')
+            heatmap_summary = html.Div([
+                html.H5("Top 5 Largest Collective Risks Areas:"),
+                html.Ul([html.Li(f"{row['Sub Risk Drivers']}: Risk Index: {row['Risk Index']:.1f}") for _, row in top_5_heatmap_risks.iterrows()])
+            ], style={'padding': '10px', 'backgroundColor': '#f9f9f9', 'border': '1px solid #ccc', 'borderRadius': '5px', 'margin': '10px 0'})
+
             # Scatterplot for combined data
             scatter_fig = px.scatter(combined_df, 
                                      x='Sub Risk Drivers', 
@@ -132,17 +145,13 @@ def update_individual_assessments(stored_data):
             )
             scatter_fig.update_traces(marker=dict(opacity=0.8), selector=dict(mode='markers'))
 
-            # Heatmap for combined data
-            heatmap_data = combined_df.pivot_table(values='Risk Index', index='Stakeholder', columns='Sub Risk Drivers')
-            heatmap_fig = px.imshow(heatmap_data, aspect='auto', title="Heatmap of Risk Assessments")
-
             return [html.Div([
-                html.P("Combined Scatterplot:"),
-                html.Hr(),
-                dcc.Graph(figure=scatter_fig),
-                html.Hr(),
                 html.P("Heatmap of Risk Assessments:"),
                 dcc.Graph(figure=heatmap_fig),
+                heatmap_summary,
+                html.Hr(),
+                html.P("Combined Scatterplot:"),
+                dcc.Graph(figure=scatter_fig),
                 html.Hr(),
                 *individual_figures  # Append individual bar charts below the scatter plot and heatmap
             ])]
@@ -150,9 +159,6 @@ def update_individual_assessments(stored_data):
             print("Required columns are missing in the combined DataFrame")  # Debug print
 
     return [html.Div("No data available for scatter plot.")]
-
-
-
 
 @app.callback(
     [Output('summary-chart-container', 'children'),
@@ -162,8 +168,6 @@ def update_individual_assessments(stored_data):
     prevent_initial_call=True
 )
 def update_master_chart(stored_data):
-    print("Callback triggered with stored_data keys:", stored_data.keys())  # Debug print
-
     if stored_data and 'data' in stored_data and 'filenames' in stored_data:
         data = stored_data['data']
         filenames = stored_data['filenames']
@@ -171,30 +175,24 @@ def update_master_chart(stored_data):
 
         for df_data, filename in zip(data, filenames):
             df = pd.DataFrame(df_data)
-            print(f"Processing file: {filename}")  # Debug print
-            print("DataFrame head:\n", df.head())  # Debug print
-
-            # Check if required columns are present
-            if {'Weight', 'Risk Index', 'Stakeholder', 'Sub Risk Drivers'}.issubset(df.columns):
-                # Prepare data for the master chart
+            
+            # Ensure required columns are present
+            if {'Weight', 'Risk Index', 'Sub Risk Drivers'}.issubset(df.columns):
+                # Calculate Weighted Risk
+                df['Weighted Risk'] = df['Weight'] * df['Risk Index']
                 dfs_with_risk.append(df)
             else:
-                print(f"Required columns are missing in file: {filename}")  # Debug print
+                print(f"Required columns are missing in file: {filename}")
 
-        # Ensure dfs_with_risk is not empty before processing master chart
         if dfs_with_risk:
             df_all = pd.concat(dfs_with_risk)
-            df_all.sort_values('Weight', ascending=False, inplace=True)  # Sort by 'Weight' in descending order
-            print("Combined DataFrame head:\n", df_all.head())  # Debug print
-            
-            # Create the master chart with mean and standard deviation
+            df_all.sort_values('Weighted Risk', ascending=False, inplace=True)
+
             if not df_all.empty:
-                df_grouped = df_all.groupby('Sub Risk Drivers')['Weight'].agg(['mean', 'std']).reset_index()
+                df_grouped = df_all.groupby('Sub Risk Drivers')['Weighted Risk'].agg(['mean', 'std']).reset_index()
                 df_grouped.columns = ['Sub Risk Drivers', 'Mean Weighted Risk', 'Standard Deviation']
                 
-                # Sort the grouped DataFrame by mean weighted risk
                 df_grouped.sort_values('Mean Weighted Risk', ascending=False, inplace=True)
-                print("Grouped DataFrame head:\n", df_grouped.head())  # Debug print
                 
                 master_fig = go.Figure()
                 master_fig.add_trace(go.Bar(
@@ -204,7 +202,6 @@ def update_master_chart(stored_data):
                     marker_color='blue'
                 ))
                 
-                # Add error bars for standard deviation
                 master_fig.add_trace(go.Bar(
                     x=df_grouped['Sub Risk Drivers'],
                     y=df_grouped['Standard Deviation'],
@@ -222,10 +219,9 @@ def update_master_chart(stored_data):
                 
                 master_chart = dcc.Graph(figure=master_fig)
 
-                # Summary statistics
                 top_5_risks = df_grouped.nlargest(5, 'Mean Weighted Risk')
                 top_5_std = df_grouped.nlargest(5, 'Standard Deviation')
-                overall_std = df_grouped['Standard Deviation'].mean() * 100  # Convert to percentage
+                overall_std = df_grouped['Standard Deviation'].mean() * 100
                 
                 if overall_std <= 10:
                     std_comment = "Standard Deviation is Allowable and Understandable"
@@ -238,10 +234,10 @@ def update_master_chart(stored_data):
                     html.H5("Summary Statistics:"),
                     html.P(f"Top 5 Sub Risk Categories with Greatest Risk: {', '.join(top_5_risks['Sub Risk Drivers'])}"),
                     html.P(f"Top 5 Sub Risk Categories with Greatest Standard Deviation: {', '.join(top_5_std['Sub Risk Drivers'])}"),
-                    html.P(f"Overall Standard Deviation: {overall_std:.2f}%, {std_comment}")
+                    html.P(f"Overall Standard Deviation: {overall_std:.1f}%, {std_comment}")
                 ], style={'padding': '20px', 'backgroundColor': '#f9f9f9', 'border': '1px solid #ccc', 'borderRadius': '5px', 'margin': '10px 0'})
-                
-                master_top_risks = df_all.nlargest(5, 'Weight')
+
+                master_top_risks = df_all.nlargest(5, 'Weighted Risk')
                 master_mitigation = [html.H5("Mitigation Strategies for Master Chart")]
                 master_mitigation.extend([
                     html.Div([
@@ -260,8 +256,6 @@ def update_master_chart(stored_data):
 
         return summary_chart, master_chart, html.Div(master_mitigation)
     return html.Div("No file uploaded."), html.Div(), html.Div()
-
-
 
 
 @app.callback(

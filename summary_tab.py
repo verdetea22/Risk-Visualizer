@@ -77,11 +77,23 @@ def update_individual_assessments(stored_data):
         data = stored_data['data']
         filenames = stored_data['filenames']
         combined_df = pd.DataFrame()
+        individual_figures = []
 
         for df_data, filename in zip(data, filenames):
             df = pd.DataFrame(df_data)
             df['Stakeholder'] = filename
             combined_df = pd.concat([combined_df, df])
+
+            if 'Weight' in df.columns and 'Risk Index' in df.columns:
+                df['Weighted Risk'] = df['Weight'] * df['Risk Index']
+                df.sort_values('Weighted Risk', ascending=False, inplace=True)  # Sort by 'Weighted Risk' in descending order
+                bar_fig = px.bar(df, x='Sub Risk Drivers', y='Weighted Risk', color='Risk Index', title=f"Risk Analysis for {filename}")
+                individual_figures.append(html.Div([
+                    html.P(f"Assessment and Mitigation Plan for {filename}:"),
+                    html.Hr(),
+                    dcc.Graph(figure=bar_fig),
+                    html.Hr()  # Divider after each file's assessment and mitigation plan
+                ]))
 
         print("Combined DataFrame head:\n", combined_df.head())  # Debug print
 
@@ -98,12 +110,14 @@ def update_individual_assessments(stored_data):
                 html.P("Combined Scatterplot:"),
                 html.Hr(),
                 dcc.Graph(figure=scatter_fig),
-                html.Hr()
+                html.Hr(),
+                *individual_figures  # Append individual bar charts below the scatter plot
             ])]
         else:
             print("Required columns are missing in the combined DataFrame")  # Debug print
 
     return [html.Div("No data available for scatter plot.")]
+
 
 
 @app.callback(

@@ -66,7 +66,6 @@ def process_data(contents, filenames):
         return {'data': datasets, 'filenames': filenames}
     return {}
 
-
 @app.callback(
     Output('graphs-container', 'children'),
     Input('data-store', 'data'),
@@ -141,7 +140,42 @@ def update_individual_assessments(stored_data):
                 title="Combined Risk Assessment Scatterplot",
                 xaxis_title="Sub Risk Drivers",
                 yaxis_title="Risk Index",
-                legend_title="Stakeholder"
+                legend_title="Stakeholder",
+                shapes=[
+                    dict(
+                        type='rect',
+                        xref='paper',
+                        yref='y',
+                        x0=0,
+                        y0=2,
+                        x1=1,
+                        y1=3,
+                        fillcolor='rgba(255, 0, 0, 0.1)',
+                        line=dict(width=0)
+                    ),
+                    dict(
+                        type='rect',
+                        xref='paper',
+                        yref='y',
+                        x0=0,
+                        y0=1,
+                        x1=1,
+                        y1=2,
+                        fillcolor='rgba(255, 165, 0, 0.1)',
+                        line=dict(width=0)
+                    ),
+                    dict(
+                        type='rect',
+                        xref='paper',
+                        yref='y',
+                        x0=0,
+                        y0=0,
+                        x1=1,
+                        y1=1,
+                        fillcolor='rgba(0, 128, 0, 0.1)',
+                        line=dict(width=0)
+                    )
+                ]
             )
             scatter_fig.update_traces(marker=dict(opacity=0.8), selector=dict(mode='markers'))
 
@@ -159,6 +193,7 @@ def update_individual_assessments(stored_data):
             print("Required columns are missing in the combined DataFrame")  # Debug print
 
     return [html.Div("No data available for scatter plot.")]
+
 
 @app.callback(
     [Output('summary-chart-container', 'children'),

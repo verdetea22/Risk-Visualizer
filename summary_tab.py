@@ -23,31 +23,40 @@ mitigation_box_style = {
 }
 
 # Layout
-# Layout
 app.layout = html.Div([
     dcc.Store(id='data-store'),
-    dcc.Upload(
-        id='upload-data',
-        children=html.Button('Upload Files', className='btn btn-primary'),
-        style={'width': '100%', 'height': '50px', 'lineHeight': '50px'},
-        multiple=True
-    ),
-    dbc.Card(id='file-list', style={'margin': '20px', 'padding': '10px'}),
-    dcc.Tabs(id='tabs', children=[
-        dcc.Tab(label='Individual Assessments', children=[
-            html.P("Individual Assessments:"),
-            html.Hr(),
-            html.Div(id='graphs-container')
+    dbc.Container([
+        dbc.Row([
+            dbc.Col([
+                dcc.Upload(
+                    id='upload-data',
+                    children=html.Button('Upload Files', className='btn btn-primary'),
+                    style={'width': '100%', 'height': '50px', 'lineHeight': '50px', 'margin-bottom': '20px'},
+                    multiple=True
+                ),
+                dbc.Card(id='file-list', style={'margin': '20px', 'padding': '10px'})
+            ], width=12)
         ]),
-        dcc.Tab(label='Master Chart', children=[
-            html.P("Master Chart:"),
-            html.Hr(),
-            html.Div(id='summary-chart-container', style={'padding': '20px', 'backgroundColor': '#f9f9f9', 'border': '1px solid #ccc', 'borderRadius': '5px', 'margin': '10px 0'}),
-            html.Div(id='master-chart-container')
+        dcc.Tabs(id='tabs', children=[
+            dcc.Tab(label='Individual Assessments', children=[
+                html.Div([
+                    html.P("Individual Assessments:", className='h5'),
+                    html.Hr(),
+                    html.Div(id='graphs-container')
+                ], className='p-3')
+            ]),
+            dcc.Tab(label='Master Chart', children=[
+                html.Div([
+                    html.P("Master Chart:", className='h5'),
+                    html.Hr(),
+                    html.Div(id='summary-chart-container', className='my-4 p-3', style={'backgroundColor': '#f9f9f9', 'border': '1px solid #ccc', 'borderRadius': '5px'}),
+                    html.Div(id='master-chart-container', className='my-4 p-3')
+                ], className='p-3')
+            ]),
         ]),
-    ]),
-    html.Div(id='mitigation-container'),
-    html.Div(id='summary-output')  # This is the new element where summaries will be displayed
+        html.Div(id='mitigation-container', className='my-4 p-3'),
+        html.Div(id='summary-output', className='my-4 p-3')  # This is the new element where summaries will be displayed
+    ])
 ])
 
 
@@ -72,8 +81,6 @@ def process_data(contents, filenames):
     prevent_initial_call=True
 )
 def update_individual_assessments(stored_data):
-    print("Callback triggered with stored_data keys:", stored_data.keys())  # Debug print
-
     if stored_data and 'data' in stored_data and 'filenames' in stored_data:
         data = stored_data['data']
         filenames = stored_data['filenames']
@@ -110,76 +117,75 @@ def update_individual_assessments(stored_data):
                     dcc.Graph(figure=bar_fig),
                     summary,
                     html.Hr()  # Divider after each file's assessment and mitigation plan
-                ]))
+                ], className='mb-3'))
 
-        print("Combined DataFrame head:\n", combined_df.head())  # Debug print
+        # Heatmap for combined data
+        heatmap_data = combined_df.pivot_table(values='Risk Index', index='Stakeholder', columns='Sub Risk Drivers')
+        heatmap_fig = px.imshow(heatmap_data, aspect='auto', title="Heatmap of Risk Assessments", color_continuous_scale=['green', 'orange', 'red'])
 
-        # Check if required columns are present
-        if {'Weight', 'Risk Index', 'Sub Risk Drivers', 'Stakeholder'}.issubset(combined_df.columns):
-            # Heatmap for combined data
-            heatmap_data = combined_df.pivot_table(values='Risk Index', index='Stakeholder', columns='Sub Risk Drivers')
-            heatmap_fig = px.imshow(heatmap_data, aspect='auto', title="Heatmap of Risk Assessments", color_continuous_scale=['green', 'orange', 'red'])
+        # Summary box for heatmap top 5 risks
+        top_5_heatmap_risks = combined_df.nlargest(5, 'Risk Index')
+        heatmap_summary = html.Div([
+            html.H5("Top 5 Largest Collective Risks Areas:"),
+            html.Ul([html.Li(f"{row['Sub Risk Drivers']}: Risk Index: {row['Risk Index']:.1f}") for _, row in top_5_heatmap_risks.iterrows()])
+        ], style={'padding': '10px', 'backgroundColor': '#f9f9f9', 'border': '1px solid #ccc', 'borderRadius': '5px', 'margin': '10px 0'})
 
-            # Summary box for heatmap top 5 risks
-            top_5_heatmap_risks = combined_df.nlargest(5, 'Risk Index')
-            heatmap_summary = html.Div([
-                html.H5("Top 5 Largest Collective Risks Areas:"),
-                html.Ul([html.Li(f"{row['Sub Risk Drivers']}: Risk Index: {row['Risk Index']:.1f}") for _, row in top_5_heatmap_risks.iterrows()])
-            ], style={'padding': '10px', 'backgroundColor': '#f9f9f9', 'border': '1px solid #ccc', 'borderRadius': '5px', 'margin': '10px 0'})
+        # Scatterplot for combined data
+        scatter_fig = px.scatter(combined_df, 
+                                 x='Sub Risk Drivers', 
+                                 y='Risk Index', 
+                                 color='Stakeholder', 
+                                 size='Weight', 
+                                 title="Combined Risk Assessment Scatterplot",
+                                 labels={"Risk Index": "Risk Index (Higher is worse)"})  # Add label for y-axis
 
-            # Scatterplot for combined data
-            scatter_fig = px.scatter(combined_df, 
-                                     x='Sub Risk Drivers', 
-                                     y='Risk Index', 
-                                     color='Stakeholder', 
-                                     size='Weight', 
-                                     title="Combined Risk Assessment Scatterplot",
-                                     labels={"Risk Index": "Risk Index (Higher is worse)"})  # Add label for y-axis
+        scatter_fig.update_layout(
+            title="Combined Risk Assessment Scatterplot",
+            xaxis_title="Sub Risk Drivers",
+            yaxis_title="Risk Index",
+            legend_title="Stakeholder",
+            shapes=[
+                dict(
+                    type='rect',
+                    xref='paper',
+                    yref='y',
+                    x0=0,
+                    y0=2,
+                    x1=1,
+                    y1=3,
+                    fillcolor='rgba(255, 0, 0, 0.1)',
+                    line=dict(width=0)
+                ),
+                dict(
+                    type='rect',
+                    xref='paper',
+                    yref='y',
+                    x0=0,
+                    y0=1,
+                    x1=1,
+                    y1=2,
+                    fillcolor='rgba(255, 165, 0, 0.1)',
+                    line=dict(width=0)
+                ),
+                dict(
+                    type='rect',
+                    xref='paper',
+                    yref='y',
+                    x0=0,
+                    y0=0,
+                    x1=1,
+                    y1=1,
+                    fillcolor='rgba(0, 128, 0, 0.1)',
+                    line=dict(width=0)
+                )
+            ]
+        )
+        scatter_fig.update_traces(marker=dict(opacity=0.8), selector=dict(mode='markers'))
 
-            scatter_fig.update_layout(
-                title="Combined Risk Assessment Scatterplot",
-                xaxis_title="Sub Risk Drivers",
-                yaxis_title="Risk Index",
-                legend_title="Stakeholder",
-                shapes=[
-                    dict(
-                        type='rect',
-                        xref='paper',
-                        yref='y',
-                        x0=0,
-                        y0=2,
-                        x1=1,
-                        y1=3,
-                        fillcolor='rgba(255, 0, 0, 0.1)',
-                        line=dict(width=0)
-                    ),
-                    dict(
-                        type='rect',
-                        xref='paper',
-                        yref='y',
-                        x0=0,
-                        y0=1,
-                        x1=1,
-                        y1=2,
-                        fillcolor='rgba(255, 165, 0, 0.1)',
-                        line=dict(width=0)
-                    ),
-                    dict(
-                        type='rect',
-                        xref='paper',
-                        yref='y',
-                        x0=0,
-                        y0=0,
-                        x1=1,
-                        y1=1,
-                        fillcolor='rgba(0, 128, 0, 0.1)',
-                        line=dict(width=0)
-                    )
-                ]
-            )
-            scatter_fig.update_traces(marker=dict(opacity=0.8), selector=dict(mode='markers'))
-
-            return [html.Div([
+        return [
+            html.Div([
+                html.Hr(),
+                html.H4("Heatmap and Scatterplot", className='mt-4'),
                 html.P("Heatmap of Risk Assessments:"),
                 dcc.Graph(figure=heatmap_fig),
                 heatmap_summary,
@@ -188,10 +194,8 @@ def update_individual_assessments(stored_data):
                 dcc.Graph(figure=scatter_fig),
                 html.Hr(),
                 *individual_figures  # Append individual bar charts below the scatter plot and heatmap
-            ])]
-        else:
-            print("Required columns are missing in the combined DataFrame")  # Debug print
-
+            ])
+        ]
     return [html.Div("No data available for scatter plot.")]
 
 
@@ -267,9 +271,21 @@ def update_master_chart(stored_data):
 
                 summary_chart = html.Div([
                     html.H5("Summary Statistics:"),
-                    html.P(f"Top 5 Sub Risk Categories with Greatest Risk: {', '.join(top_5_risks['Sub Risk Drivers'])}"),
-                    html.P(f"Top 5 Sub Risk Categories with Greatest Standard Deviation: {', '.join(top_5_std['Sub Risk Drivers'])}"),
-                    html.P(f"Overall Standard Deviation: {overall_std:.1f}%, {std_comment}")
+                    html.P([
+                        html.B("Top 5 Sub Risk Categories with Greatest Risk:"),
+                        html.Br(),
+                        ', '.join(top_5_risks['Sub Risk Drivers'])
+                    ]),
+                    html.P([
+                        html.B("Top 5 Sub Risk Categories with Greatest Standard Deviation:"),
+                        html.Br(),
+                        ', '.join(top_5_std['Sub Risk Drivers'])
+                    ]),
+                    html.P([
+                        html.B("Overall Standard Deviation:"),
+                        html.Br(),
+                        f"{overall_std:.1f}%, {std_comment}"
+                    ])
                 ], style={'padding': '20px', 'backgroundColor': '#f9f9f9', 'border': '1px solid #ccc', 'borderRadius': '5px', 'margin': '10px 0'})
 
                 master_top_risks = df_all.nlargest(5, 'Weighted Risk')
@@ -291,6 +307,7 @@ def update_master_chart(stored_data):
 
         return summary_chart, master_chart, html.Div(master_mitigation)
     return html.Div("No file uploaded."), html.Div(), html.Div()
+
 
 
 @app.callback(

@@ -64,6 +64,7 @@ def process_data(contents, filenames):
         return {'data': datasets, 'filenames': filenames}
     return {}
 
+
 @app.callback(
     Output('graphs-container', 'children'),
     Input('data-store', 'data'),
@@ -123,7 +124,6 @@ def update_individual_assessments(stored_data):
                                      title="Combined Risk Assessment Scatterplot",
                                      labels={"Risk Index": "Risk Index (Higher is worse)"})  # Add label for y-axis
 
-            # Recommendations for making scatter plot more intuitive
             scatter_fig.update_layout(
                 title="Combined Risk Assessment Scatterplot",
                 xaxis_title="Sub Risk Drivers",
@@ -132,12 +132,19 @@ def update_individual_assessments(stored_data):
             )
             scatter_fig.update_traces(marker=dict(opacity=0.8), selector=dict(mode='markers'))
 
+            # Heatmap for combined data
+            heatmap_data = combined_df.pivot_table(values='Risk Index', index='Stakeholder', columns='Sub Risk Drivers')
+            heatmap_fig = px.imshow(heatmap_data, aspect='auto', title="Heatmap of Risk Assessments")
+
             return [html.Div([
                 html.P("Combined Scatterplot:"),
                 html.Hr(),
                 dcc.Graph(figure=scatter_fig),
                 html.Hr(),
-                *individual_figures  # Append individual bar charts below the scatter plot
+                html.P("Heatmap of Risk Assessments:"),
+                dcc.Graph(figure=heatmap_fig),
+                html.Hr(),
+                *individual_figures  # Append individual bar charts below the scatter plot and heatmap
             ])]
         else:
             print("Required columns are missing in the combined DataFrame")  # Debug print

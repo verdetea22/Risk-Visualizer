@@ -5,7 +5,7 @@ import dash_bootstrap_components as dbc
 
 from weights_tab import weights_tab_layout, update_sliders, render_graphics
 from risk_index_tab import risk_index_tab_layout
-from summary_tab import summary_tab_layout
+
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
 
@@ -29,8 +29,6 @@ def render_tab(tab):
         return weights_tab_layout()
     elif tab == 'risk-index-tab':
         return risk_index_tab_layout()
-    elif tab == 'summary-tab':
-        return summary_tab_layout()
     return html.Div("Select a tab")
 
 @app.callback(
